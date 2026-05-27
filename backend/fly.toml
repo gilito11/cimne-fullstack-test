@@ -1,0 +1,20 @@
+# fly.toml — backend deployment on Fly.io
+# Generate the app first: `fly launch --no-deploy --copy-config --name cimne-test-api`
+# Then set secrets: see DEPLOY.md
+app = "cimne-test-api"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
