@@ -4,8 +4,8 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { api } from "../api/client";
 import type { BuildingIndicator } from "../api/types";
 
-const DEFAULT_CENTER: [number, number] = [41.6176, 0.6200]; // Lleida
-const DEFAULT_ZOOM = 12;
+const DEFAULT_CENTER: [number, number] = [41.3934, 2.1578]; // Barcelona — area of the provided dataset
+const DEFAULT_ZOOM = 17;
 
 async function fetchIndicator(indicator: string, date: string): Promise<BuildingIndicator[]> {
   const r = await api.get<BuildingIndicator[]>("/buildings/indicator", {

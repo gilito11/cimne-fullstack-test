@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -10,13 +9,6 @@ from ..services import building_repo, external_api
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/buildings", tags=["buildings"])
-
-
-def _pick(item: dict[str, Any], *keys: str) -> Any:
-    for k in keys:
-        if k in item and item[k] is not None:
-            return item[k]
-    return None
 
 
 @router.get("", response_model=list[dict])
@@ -30,7 +22,12 @@ def get_indicator(
     calculation_date: str = Query("2025-05-14", description="YYYY-MM-DD"),
     _: dict = Depends(get_current_user),
 ) -> list[BuildingIndicator]:
-    """Fetch an indicator from the CIMNE external API and intersect with local Neo4j buildings."""
+    """Fetch an indicator from the CIMNE external API and intersect with local Neo4j buildings.
+
+    The upstream endpoint returns a single document per indicator/date with a
+    ``kpis`` mapping of ``{cadastral_reference: value}``. We flatten that map
+    and keep only references that exist in the local Neo4j dataset.
+    """
     try:
         external_items = external_api.fetch_indicator(indicator, calculation_date)
     except Exception as exc:
@@ -41,20 +38,24 @@ def get_indicator(
     if not local_buildings:
         return []
 
-    out: list[BuildingIndicator] = []
+    kpis: dict[str, float] = {}
     for item in external_items:
-        ref = _pick(item, "reference", "building_reference", "cadastral_reference", "ref")
-        if not ref or ref not in local_buildings:
+        if isinstance(item, dict) and isinstance(item.get("kpis"), dict):
+            kpis.update(item["kpis"])
+
+    out: list[BuildingIndicator] = []
+    for ref, value in kpis.items():
+        if ref not in local_buildings:
             continue
         local = local_buildings[ref]
         out.append(
             BuildingIndicator(
                 reference=ref,
-                name=local.get("name") or _pick(item, "name"),
+                name=local.get("name"),
                 indicator=indicator,
-                value=_pick(item, "value", "indicator_value", "average"),
-                lat=local.get("lat") or _pick(item, "lat", "latitude"),
-                lng=local.get("lng") or _pick(item, "lng", "longitude"),
+                value=float(value) if isinstance(value, (int, float)) else None,
+                lat=local.get("lat"),
+                lng=local.get("lng"),
                 calculation_date=calculation_date,
             )
         )
