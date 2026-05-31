@@ -45,3 +45,6 @@ neo4j-plugins/
 
 # Docker
 docker-compose.override.yml
+
+# Vercel
+.vercel/
